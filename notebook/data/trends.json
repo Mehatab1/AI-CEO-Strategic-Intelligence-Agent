@@ -4,20 +4,23 @@
     "description": "SAP delivers an ecosystem that can provide real-time updates and personalized recommendations that provide seamless, end-to-end experiences.",
     "evidence": "The AI now underpins everything from next best engagement to intelligent service resolution.",
     "title": "AI-powered customer experiences",
-    "validation_status": "Supported"
+    "validation_status": "Supported",
+    "confidence_score": 90
   },
   {
     "category": "Technology",
     "description": "SAP researchers addressed the challenge of unstructured data by bringing intelligent document processing directly into core business applications.",
-    "evidence": "The solution has become deeply embedded across SAP\u2019s portfolio and is used by tens of thousands of customers worldwide to process billions of documents.",
+    "evidence": "The solution has become deeply embedded across SAP’s portfolio and is used by tens of thousands of customers worldwide to process billions of documents.",
     "title": "Intelligent document processing",
-    "validation_status": "Supported"
+    "validation_status": "Supported",
+    "confidence_score": 85
   },
   {
     "category": "Technology",
     "description": "SAP delivers an ecosystem that can provide real-time updates and personalized recommendations that provide seamless, end-to-end experiences.",
     "evidence": "Using SAP Service Cloud, organizations can manage cases, complaints, and information requests efficiently.",
     "title": "Real-time updates and personalized recommendations",
-    "validation_status": "Supported"
+    "validation_status": "Supported",
+    "confidence_score": 75
   }
 ]

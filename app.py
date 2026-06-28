@@ -69,11 +69,12 @@ main_tab, data_tab = st.tabs(["💬 Chat with the CEO Agent", "📊 Supporting I
 # ============================================================
 with main_tab:
     st.caption(
-        "Every answer runs a full **Plan → Retrieve → Analyze → Decide → Validate** "
-        "pipeline: the agent plans its approach, retrieves evidence using its own tools, "
-        "analyzes that evidence, decides on a recommendation, then validates it against "
-        "the evidence before answering. Expand 'Agent reasoning trail' below an answer "
-        "to see every stage."
+        "Every answer runs a fully autonomous **Memory Recall → Plan → Retrieve → Analyze "
+        "→ Decide → Validate** pipeline. The agent autonomously selects which specialist "
+        "agents and data sources to call — Opportunity Agent, Risk Agent, Trend Agent, "
+        "Competitor Intelligence Agent, live news, FAISS knowledge base, or memory — "
+        "based on your question. For strategic questions the **Critic Agent** evaluates "
+        "the draft before validation. Expand 'Agent reasoning trail' to inspect every stage."
     )
 
     if "messages" not in st.session_state:
@@ -88,52 +89,122 @@ with main_tab:
             st.rerun()
 
     STAGE_LABELS = {
+        "memory_recall": "🧠 Consulting memory...",
         "plan": "📋 Planning...",
-        "retrieve": "🔍 Retrieving evidence...",
-        "analyze": "🧠 Analyzing evidence...",
+        "retrieve": "🔍 Retrieving evidence (autonomous tool selection)...",
+        "analyze": "📊 Analyzing evidence...",
         "decide": "✅ Deciding & recommending...",
+        "critique": "🔬 Critic evaluating recommendation...",
         "validate": "🔎 Validating recommendation...",
+    }
+
+    # Agent/tool display names for the reasoning trail
+    _TOOL_LABELS = {
+        "retrieve_knowledge_base": "📚 Knowledge Base (FAISS)",
+        "fetch_live_news": "🌐 Live News Fetch",
+        "run_opportunity_agent": "🚀 Opportunity Intelligence Agent",
+        "run_risk_agent": "⚠️ Risk Intelligence Agent",
+        "run_trend_agent": "📈 Trend Intelligence Agent",
+        "run_competitor_intelligence": "🔭 Competitor Intelligence Agent",
+        "recall_memory": "🧠 Memory Recall",
+        "retrieve_news": "📚 Knowledge Base (FAISS)",
+        "get_opportunities": "🚀 Opportunity Agent",
+        "get_risks": "⚠️ Risk Agent",
+        "get_trends": "📈 Trend Agent",
+        "get_competitor_activity": "🔭 Competitor Monitor",
+        "finished_retrieving": None,
     }
 
     def _render_pipeline(trace):
         if not trace:
             return
-        with st.expander("🔧 Agent reasoning trail (Plan → Retrieve → Analyze → Decide → Validate)"):
+        with st.expander(
+            "🔧 Agent reasoning trail  "
+            "(Memory Recall → Plan → Retrieve → Analyze → Decide → Critic → Validate)"
+        ):
             for entry in trace:
                 stage = entry.get("stage")
                 payload = entry.get("payload") or {}
 
-                if stage == "plan":
+                if stage == "memory_recall":
+                    st.markdown("**0. Memory Recall**")
+                    hits = payload if isinstance(payload, list) else []
+                    if hits:
+                        st.write(f"Found {len(hits)} prior insight(s) — surfaced to planner:")
+                        for hit in hits[:3]:
+                            label = (
+                                hit.get("question")
+                                or hit.get("summary")
+                                or str(hit)[:120]
+                            )
+                            st.write(f"• {label[:150]}")
+                    else:
+                        st.write("*(no prior memory on this topic — starting fresh)*")
+
+                elif stage == "plan":
                     st.markdown("**1. Plan**")
-                    st.write("Goal:", payload.get("goal"))
+                    st.write("**Goal:**", payload.get("goal"))
                     for step in payload.get("planned_steps", []):
                         st.write("•", step)
 
                 elif stage == "retrieve":
-                    st.markdown("**2. Retrieve**")
+                    st.markdown("**2. Retrieve** — autonomous tool selection")
                     for call in payload:
                         tool = call.get("tool")
                         if tool == "finished_retrieving":
-                            st.write("• *(agent signalled it had enough evidence)*")
+                            st.write("• ✅ *(agent signalled it had gathered enough evidence)*")
                         else:
-                            st.write(f"• called `{tool}` with `{call.get('arguments')}`")
+                            label = _TOOL_LABELS.get(tool, f"`{tool}`")
+                            args = call.get("arguments") or {}
+                            arg_str = ", ".join(
+                                f"{k}={repr(v)}" for k, v in args.items() if v
+                            )
+                            st.write(f"• {label}" + (f" → `{arg_str}`" if arg_str else ""))
 
                 elif stage == "analyze":
                     st.markdown("**3. Analyze**")
                     for obs in payload.get("key_observations", []):
                         st.write("•", obs)
+                    if payload.get("candidate_items"):
+                        st.write("**Candidate items identified:**")
+                        for item in payload["candidate_items"]:
+                            st.write(f"  — {item}")
 
                 elif stage == "decide_recommend":
-                    st.markdown("**4. Decide & Recommend (draft)**")
-                    st.json(payload)
+                    st.markdown("**4. Decide & Recommend** *(draft)*")
+                    # Show key fields as readable text rather than raw JSON
+                    for field in ("executive_summary", "recommended_actions", "priority_level"):
+                        val = payload.get(field)
+                        if val:
+                            st.write(f"**{field.replace('_', ' ').title()}:** {val}")
+
+                elif stage == "critique":
+                    verdict = payload.get("verdict", "unknown")
+                    icon = {"approved": "🟢", "needs_revision": "🟡", "rejected": "🔴"}.get(verdict, "⚪")
+                    st.markdown(f"**4b. Critic Evaluation** — {icon} **{verdict}**")
+                    for axis in (
+                        "evidence_grounding", "hallucination_risk",
+                        "logical_consistency", "recommendation_quality",
+                    ):
+                        if payload.get(axis):
+                            st.write(f"  • {axis.replace('_', ' ').title()}: **{payload[axis]}**")
+                    if payload.get("feedback"):
+                        st.write(f"Feedback: {payload['feedback']}")
+
+                elif stage == "decide_recommend_revised":
+                    st.markdown("**4c. Revised Decision** *(post-critic)*")
+                    val = payload.get("executive_summary") or payload.get("recommended_actions")
+                    if val:
+                        st.write(val[:300])
 
                 elif stage == "validate":
-                    st.markdown("**5. Validate (final)**")
+                    st.markdown("**5. Validate** *(final)*")
                     status = payload.get("validation_status")
                     if status:
-                        st.write(f"Status: **{status}** — {payload.get('validation_notes', '')}")
+                        icon = {"Supported": "✅", "Revised": "🔄", "Unsupported": "❌"}.get(status, "•")
+                        st.write(f"{icon} **{status}** — {payload.get('validation_notes', '')}")
                     else:
-                        st.json(payload)
+                        st.write("*(validation stage did not return a status)*")
 
                 st.divider()
 
@@ -281,9 +352,15 @@ with data_tab:
             st.info("No trend data yet - run agents/03_trend_agent.ipynb")
         else:
             for t in trends:
-                st.markdown(f"**{t.get('title')}** _{t.get('category')}_")
-                st.write(t.get("description", ""))
-                st.write("")
+                with st.container(border=True):
+                    st.markdown(f"**{t.get('title')}** _{t.get('category')}_")
+                    st.write(t.get("description", ""))
+                    col1, col2 = st.columns(2)
+                    col1.write(f"**Evidence:** {t.get('evidence', '')}")
+                    if t.get("confidence_score") is not None:
+                        col2.write(f"**Confidence Score:** {t.get('confidence_score')}")
+                    if t.get("validation_status"):
+                        st.caption(f"Validation: {t['validation_status']}")
 
     with sub4:
         announcements = clean_df[clean_df["source"] == "SAP News"].sort_values(
