@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Supply Chain Disruptions",
+    "risk_category": "Supply Chain",
+    "severity_level": "High",
+    "evidence": "Recent news articles about SAP experiencing supply chain disruptions or inventory management issues.",
+    "confidence_score": 80,
+    "validation_status": "Supported"
+  },
+  {
+    "title": "Regulatory Changes",
+    "risk_category": "Regulatory",
+    "severity_level": "Medium",
+    "evidence": "Recent regulatory updates may impact SAP's business operations.",
+    "confidence_score": 70,
+    "validation_status": "Unsupported"
+  },
+  {
+    "title": "Negative Sentiment",
+    "risk_category": "Sentiment",
+    "severity_level": "Low",
+    "evidence": "There is potential negative sentiment towards SAP in the market.",
+    "confidence_score": 60,
+    "validation_status": "Unsupported"
+  }
+]

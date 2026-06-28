@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Partner with Ericsson for AI co-innovation initiatives",
+    "impact_level": "High",
+    "evidence": "SAP and Ericsson are collaborating on AI co-innovation initiatives.",
+    "confidence_score": 95,
+    "validation_status": "Supported",
+    "validation_notes": ""
+  },
+  {
+    "title": "Develop new AI-based products or services",
+    "impact_level": "Medium",
+    "evidence": "Customers require transparency in how support is delivered, predictable outcomes from their investments, and a simpler way to adopt innovation across their landscapes.",
+    "confidence_score": 80,
+    "validation_status": "Supported",
+    "validation_notes": ""
+  },
+  {
+    "title": "Form partnerships with other companies",
+    "impact_level": "Low",
+    "evidence": "The company is seeking ongoing guidance, measurable outcomes, and a partner that supports the transformation journey at every stage.",
+    "confidence_score": 60,
+    "validation_status": "Unsupported",
+    "validation_notes": "This recommendation was too vague in its evidence to justify forming partnerships with other companies."
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "confidence_score": 80,
+    "evidence": "Recent news articles mention competitors\u2019 market share or performance",
+    "risk_category": "Competitive Threats",
+    "severity_level": "Medium",
+    "title": "SAP Competitors' Market Share or Performance",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "confidence_score": 70,
+    "evidence": "Forward-looking statements may indicate potential regulatory changes affecting SAP\u2019s business operations",
+    "risk_category": "Regulatory Changes",
+    "severity_level": "High",
+    "title": "Potential Regulatory Changes Affecting SAP's Business Operations",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "confidence_score": 90,
+    "evidence": "Users express negative sentiments towards SAP products or services in online discussions",
+    "risk_category": "Negative Sentiment",
+    "severity_level": "Low",
+    "title": "Users Express Negative Sentiments Towards SAP Products or Services",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "confidence_score": 60,
+    "evidence": "News reports highlight disruptions or issues in SAP\u2019s supply chain",
+    "risk_category": "Supply Chain Issues",
+    "severity_level": "Medium",
+    "title": "Disruptions or Issues in SAP's Supply Chain",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  }
+]

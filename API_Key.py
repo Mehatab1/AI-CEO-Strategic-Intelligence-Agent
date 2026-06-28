@@ -1,0 +1,1 @@
+gnews_API = "bb75f217dc2511d8b0edba1f4fd84264"

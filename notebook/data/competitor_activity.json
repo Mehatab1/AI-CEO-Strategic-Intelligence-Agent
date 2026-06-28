@@ -1,0 +1,58 @@
+[
+  {
+    "competitor": "Oracle",
+    "mention_count": 19,
+    "summary": "Oracle has been actively acquiring companies in the cloud space, posing a threat to SAP's market share.",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "competitor": "Workday",
+    "mention_count": 1,
+    "summary": "Workday has made some recent announcements, but it remains to be seen if they will impact SAP significantly.",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  },
+  {
+    "competitor": "Salesforce",
+    "mention_count": 5,
+    "summary": "Salesforce's recent focus on AI and machine learning could potentially challenge SAP in the market.",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "competitor": "Microsoft",
+    "mention_count": 23,
+    "summary": "Microsoft has been aggressively expanding its cloud offerings, making it a major competitor to SAP.",
+    "validation_notes": "",
+    "validation_status": "Supported"
+  },
+  {
+    "competitor": "Infor",
+    "mention_count": 0,
+    "summary": "No recent activity found for Infor.",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  },
+  {
+    "competitor": "IFS",
+    "mention_count": 0,
+    "summary": "No recent activity found for IFS.",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  },
+  {
+    "competitor": "ServiceNow",
+    "mention_count": 0,
+    "summary": "No recent activity found for ServiceNow.",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  },
+  {
+    "competitor": "Epicor",
+    "mention_count": 0,
+    "summary": "No recent activity found for Epicor.",
+    "validation_notes": "",
+    "validation_status": "Unsupported"
+  }
+]

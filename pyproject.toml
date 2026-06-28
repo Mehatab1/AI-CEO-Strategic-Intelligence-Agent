@@ -1,0 +1,24 @@
+[project]
+name = "nlp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faiss-cpu>=1.14.3",
+    "feedparser>=6.0.12",
+    "ipykernel>=7.3.0",
+    "jupyter>=1.1.1",
+    "langchain-core>=1.4.7",
+    "langchain-text-splitters",
+    "lxml-html-clean",
+    "newspaper3k",
+    "numpy>=2.4.6",
+    "pandas>=3.0.3",
+    "python-dotenv",
+    "rapidfuzz",
+    "requests>=2.34.2",
+    "sentence-transformers>=5.5.1",
+    "streamlit",
+    "vaderSentiment",
+]
