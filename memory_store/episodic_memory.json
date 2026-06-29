@@ -1,0 +1,205 @@
+[
+  {
+    "question": "Where's SAP's biggest growth opportunity this quarter?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_opportunity_agent"
+    ],
+    "executive_summary": "SAP's biggest growth opportunity this quarter is in new market expansion and partnership opportunities, with a predicted revenue model that supports our business strategy.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T21:06:30.539819+00:00"
+  },
+  {
+    "question": "What opportunities does SAP have today?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_opportunity_agent"
+    ],
+    "executive_summary": "The main growth opportunity for SAP this quarter is in new market expansion and partnership opportunities, with a predictable revenue model.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T21:08:30.153108+00:00"
+  },
+  {
+    "question": "What are SAP's competitors doing?",
+    "workflow": "review",
+    "tools_called": [],
+    "executive_summary": "No executive summary can be provided due to lack of evidence.",
+    "validation_status": "Unsupported",
+    "timestamp": "2026-06-28T21:09:20.537329+00:00"
+  },
+  {
+    "question": "What are SAP's competitors doing?",
+    "workflow": "review",
+    "tools_called": [],
+    "executive_summary": "Due to the lack of relevant evidence, SAP cannot provide a definitive answer to our current question.",
+    "validation_status": "Unsupported",
+    "timestamp": "2026-06-28T23:19:24.112152+00:00"
+  },
+  {
+    "question": "What are SAP's competitors doing?",
+    "workflow": "review",
+    "tools_called": [],
+    "executive_summary": "In light of the lack of significant recent developments from key competitors, SAP should maintain its current market position and focus on executing existing strategies.",
+    "validation_status": "Unsupported",
+    "timestamp": "2026-06-28T23:20:19.260512+00:00"
+  },
+  {
+    "question": "What should SAP be most worried about right now?",
+    "workflow": "review",
+    "tools_called": [],
+    "executive_summary": "SAP's biggest growth opportunity this quarter is in new market expansion and partnership opportunities.",
+    "validation_status": "Unsupported",
+    "timestamp": "2026-06-28T23:22:11.490724+00:00"
+  },
+  {
+    "question": "What are SAP's competitors doing?",
+    "workflow": "review",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "run_risk_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "Based on current competitor activity, SAP should maintain its market position by executing existing strategies.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:25:52.852772+00:00"
+  },
+  {
+    "question": "What opportunities does SAP have today?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "run_opportunity_agent",
+      "run_risk_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "Based on current competitor activity, SAP should maintain its market position by executing existing strategies.",
+    "validation_status": "Revised",
+    "timestamp": "2026-06-28T23:26:24.707796+00:00"
+  },
+  {
+    "question": "What should SAP be most worried about right now?",
+    "workflow": "review",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "run_opportunity_agent",
+      "run_risk_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "Based on recent competitor activity, emerging threats to SAP's market share must be addressed through strategic partnerships and industry solutions.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:32:33.107883+00:00"
+  },
+  {
+    "question": "What are SAP's competitors doing?\n",
+    "workflow": "review",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "run_risk_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "SAP should proactively address rising competition from established players like Oracle to maintain its market share.",
+    "validation_status": "",
+    "timestamp": "2026-06-28T23:33:55.913323+00:00"
+  },
+  {
+    "question": "What AI trends should SAP watch?",
+    "workflow": "review",
+    "tools_called": [
+      "run_opportunity_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "SAP should prioritize expanding its economic model for partners to create more predictable revenue streams through industry solutions and implementation packages with SAP's Autonomous CX.",
+    "validation_status": "Revised",
+    "timestamp": "2026-06-28T23:36:00.576212+00:00"
+  },
+  {
+    "question": "What should SAP be most worried about right now?",
+    "workflow": "review",
+    "tools_called": [
+      "run_risk_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "To maintain growth opportunities in new market expansion and partnership areas, SAP must prioritize mitigating regulatory risks and enhancing supply chain resilience.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:50:48.466810+00:00"
+  },
+  {
+    "question": "Where's SAP's biggest growth opportunity this quarter?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_opportunity_agent",
+      "retrieve_knowledge_base",
+      "fetch_live_news"
+    ],
+    "executive_summary": "Our analysis indicates that SAP has significant opportunities for growth in new market expansion and partnership opportunities, driven by emerging technologies such as AI-driven solutions and our Autonomous CX platform.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:52:17.018674+00:00"
+  },
+  {
+    "question": "Where's SAP's biggest growth opportunity this quarter?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_opportunity_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "The biggest growth opportunity for SAP in the current quarter is New Market Expansion and Partnership Opportunities, which can drive high impact with a confidence level of 90%, as per our validated opportunities analysis.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:52:32.840840+00:00"
+  },
+  {
+    "question": "Where's SAP's biggest growth opportunity this quarter?",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "run_opportunity_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "SAP's biggest growth opportunity this quarter is New Market Expansion and Partnership Opportunities.",
+    "validation_status": "",
+    "timestamp": "2026-06-28T23:53:13.203973+00:00"
+  },
+  {
+    "question": "what would be Revenue of SAP in next 5 years",
+    "workflow": "pipeline",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "SAP's biggest growth opportunity this quarter is in new market expansion and partnership opportunities.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:54:16.544920+00:00"
+  },
+  {
+    "question": "Where's SAP's biggest growth opportunity this quarter?\n",
+    "workflow": "parallel",
+    "tools_called": [
+      "run_opportunity_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "Our biggest growth opportunity this quarter is New Market Expansion and Partnership Opportunities, with a high confidence level of 90%.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-28T23:57:27.087382+00:00"
+  },
+  {
+    "question": "what would be Revenue of SAP in next 5 years?",
+    "workflow": "pipeline",
+    "tools_called": [
+      "run_opportunity_agent",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "Based on our analysis, SAP\u2019s revenue growth in the next 5 years will be driven by new market expansion opportunities, AI product development, and revenue growth in SAP-led markets.",
+    "validation_status": "Revised",
+    "timestamp": "2026-06-28T23:58:07.397175+00:00"
+  },
+  {
+    "question": "What should SAP be most worried about?",
+    "workflow": "review",
+    "tools_called": [
+      "run_competitor_intelligence",
+      "retrieve_knowledge_base"
+    ],
+    "executive_summary": "We recommend that SAP enhance its cloud offerings to compete with Oracle\u2019s positioning, while also improving SAP Store to simplify procurement and increase sales.",
+    "validation_status": "Supported",
+    "timestamp": "2026-06-29T00:06:00.945455+00:00"
+  }
+]

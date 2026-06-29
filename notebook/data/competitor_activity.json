@@ -2,56 +2,49 @@
   {
     "competitor": "Oracle",
     "mention_count": 19,
-    "summary": "Oracle has been actively acquiring companies in the cloud space, posing a threat to SAP's market share.",
+    "summary": "Competitor Oracle has significant recent mentions in news articles.",
     "validation_notes": "",
     "validation_status": "Supported"
   },
   {
     "competitor": "Workday",
     "mention_count": 1,
-    "summary": "Workday has made some recent announcements, but it remains to be seen if they will impact SAP significantly.",
-    "validation_notes": "",
+    "summary": "Salesforce mentioned 5 times with no further details in news articles.",
+    "validation_notes": "No clear connection between competitor and summary.",
     "validation_status": "Unsupported"
   },
   {
     "competitor": "Salesforce",
     "mention_count": 5,
-    "summary": "Salesforce's recent focus on AI and machine learning could potentially challenge SAP in the market.",
+    "summary": "Microsoft is mentioned 23 times, a strong indicator of its market presence.",
     "validation_notes": "",
     "validation_status": "Supported"
   },
   {
     "competitor": "Microsoft",
     "mention_count": 23,
-    "summary": "Microsoft has been aggressively expanding its cloud offerings, making it a major competitor to SAP.",
+    "summary": "Infor, IFS and ServiceNow have zero recent mentions in the news corpus.",
     "validation_notes": "",
-    "validation_status": "Supported"
+    "validation_status": "Unsupported"
   },
   {
     "competitor": "Infor",
     "mention_count": 0,
-    "summary": "No recent activity found for Infor.",
+    "summary": "None mentioned",
     "validation_notes": "",
     "validation_status": "Unsupported"
   },
   {
     "competitor": "IFS",
     "mention_count": 0,
-    "summary": "No recent activity found for IFS.",
+    "summary": "None mentioned",
     "validation_notes": "",
     "validation_status": "Unsupported"
   },
   {
     "competitor": "ServiceNow",
     "mention_count": 0,
-    "summary": "No recent activity found for ServiceNow.",
-    "validation_notes": "",
-    "validation_status": "Unsupported"
-  },
-  {
-    "competitor": "Epicor",
-    "mention_count": 0,
-    "summary": "No recent activity found for Epicor.",
+    "summary": "None mentioned",
     "validation_notes": "",
     "validation_status": "Unsupported"
   }

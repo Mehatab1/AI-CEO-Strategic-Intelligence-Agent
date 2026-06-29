@@ -3,7 +3,7 @@
   "plan": {
     "goal": "Produce a report on SAP's competitors (Oracle, Workday, Salesforce, Microsoft, Infor, IFS, ServiceNow, Epicor) summarising recent activity and how it relates to SAP, using the news corpus as evidence. Skip deep investigation for competitors with no mentions.",
     "planned_steps": [
-      "{\"name\": \"submit_plan\", \"parameters\": {\"goal\": \"Produce a report on SAP's competitors by analyzing their recent activities based on news articles and comparing them to SAP.\", \"planned_steps\": [\"Search for news articles mentioning Oracle, Workday, Salesforce, Microsoft, Infor, IFS, ServiceNow, and Epicor in the past year.\", \"Use a tool to analyze these news articles and extract relevant information about each competitor.\", \"Compare the extracted information with SAP's recent activities using another dataset or tool.\", \"Identify any notable trends or patterns in the competitors' activities relative to SAP, and summarize them in the report.\", \"Optional: Filter out competitors with no mentions in the news corpus to focus on those that are actively competing with SAP.\"}}"
+      "{\"name\": \"submit_plan\", \"parameters\": {\"goal\": \"Produce a report on SAP's competitors by analyzing recent news activity related to Oracle, Workday, Salesforce, Microsoft, Infor, IFS, ServiceNow, and Epicor using the news corpus.\", \"planned_steps\": [\"Search for recent news articles mentioning each competitor in the news corpus\", \"Extract relevant information about each competitor's recent activities or updates\", \"Analyze how these activities relate to SAP and its market position\", \"Skip deep investigation for competitors with no mentions in the news corpus\", \"Summarize findings into a comprehensive report\"]}"
     ]
   },
   "retrieval_trace": [
@@ -49,114 +49,87 @@
   ],
   "analysis": {
     "candidate_items": [
-      "Oracle Activity Summary",
-      "Workday Activity Summary",
-      "Salesforce Activity Summary",
-      "Microsoft Activity Summary"
+      "Competitor Oracle has recent mentions of 19 in news articles.",
+      "Salesforce mentioned 5 times with no further details in news corpus.",
+      "Microsoft is mentioned 23 times, a strong indicator of its market presence.",
+      "No recent mentions for Infor, IFS or ServiceNow found in the news corpus."
     ],
     "key_observations": [
-      "Oracle has 19 mentions in the news corpus, indicating significant recent activity.",
-      "Workday and Salesforce have fewer mentions (1 and 5 respectively), but still show some level of recent activity.",
-      "Microsoft's 23 mentions suggest it is a major competitor to SAP.",
-      "Infor, IFS, ServiceNow, and Epicor have no mentions in the news corpus."
+      "Competitor Oracle has significant recent mentions in news articles.",
+      "Salesforce's mention count is relatively low with no further details available.",
+      "Microsoft's high mention count indicates strong market presence.",
+      "Infor, IFS and ServiceNow have zero recent mentions in the news corpus."
     ]
   },
   "draft_recommendations": [
     {
       "competitor": "Oracle",
       "mention_count": 19,
-      "summary": "Oracle has been actively acquiring companies in the cloud space, posing a threat to SAP's market share."
+      "summary": "Competitor Oracle has significant recent mentions in news articles."
     },
     {
       "competitor": "Workday",
       "mention_count": 1,
-      "summary": "Workday has made some recent announcements, but it remains to be seen if they will impact SAP significantly."
+      "summary": "Salesforce mentioned 5 times with no further details in news articles."
     },
     {
       "competitor": "Salesforce",
       "mention_count": 5,
-      "summary": "Salesforce's recent focus on AI and machine learning could potentially challenge SAP in the market."
+      "summary": "Microsoft is mentioned 23 times, a strong indicator of its market presence."
     },
     {
       "competitor": "Microsoft",
       "mention_count": 23,
-      "summary": "Microsoft has been aggressively expanding its cloud offerings, making it a major competitor to SAP."
-    },
-    {
-      "competitor": "Infor",
-      "mention_count": 0,
-      "summary": "No recent activity found for Infor."
-    },
-    {
-      "competitor": "IFS",
-      "mention_count": 0,
-      "summary": "No recent activity found for IFS."
-    },
-    {
-      "competitor": "ServiceNow",
-      "mention_count": 0,
-      "summary": "No recent activity found for ServiceNow."
-    },
-    {
-      "competitor": "Epicor",
-      "mention_count": 0,
-      "summary": "No recent activity found for Epicor."
+      "summary": "Infor, IFS and ServiceNow have zero recent mentions in the news corpus."
     }
   ],
   "validated_recommendations": [
     {
       "competitor": "Oracle",
       "mention_count": 19,
-      "summary": "Oracle has been actively acquiring companies in the cloud space, posing a threat to SAP's market share.",
+      "summary": "Competitor Oracle has significant recent mentions in news articles.",
       "validation_notes": "",
       "validation_status": "Supported"
     },
     {
       "competitor": "Workday",
       "mention_count": 1,
-      "summary": "Workday has made some recent announcements, but it remains to be seen if they will impact SAP significantly.",
-      "validation_notes": "",
+      "summary": "Salesforce mentioned 5 times with no further details in news articles.",
+      "validation_notes": "No clear connection between competitor and summary.",
       "validation_status": "Unsupported"
     },
     {
       "competitor": "Salesforce",
       "mention_count": 5,
-      "summary": "Salesforce's recent focus on AI and machine learning could potentially challenge SAP in the market.",
+      "summary": "Microsoft is mentioned 23 times, a strong indicator of its market presence.",
       "validation_notes": "",
       "validation_status": "Supported"
     },
     {
       "competitor": "Microsoft",
       "mention_count": 23,
-      "summary": "Microsoft has been aggressively expanding its cloud offerings, making it a major competitor to SAP.",
+      "summary": "Infor, IFS and ServiceNow have zero recent mentions in the news corpus.",
       "validation_notes": "",
-      "validation_status": "Supported"
+      "validation_status": "Unsupported"
     },
     {
       "competitor": "Infor",
       "mention_count": 0,
-      "summary": "No recent activity found for Infor.",
+      "summary": "None mentioned",
       "validation_notes": "",
       "validation_status": "Unsupported"
     },
     {
       "competitor": "IFS",
       "mention_count": 0,
-      "summary": "No recent activity found for IFS.",
+      "summary": "None mentioned",
       "validation_notes": "",
       "validation_status": "Unsupported"
     },
     {
       "competitor": "ServiceNow",
       "mention_count": 0,
-      "summary": "No recent activity found for ServiceNow.",
-      "validation_notes": "",
-      "validation_status": "Unsupported"
-    },
-    {
-      "competitor": "Epicor",
-      "mention_count": 0,
-      "summary": "No recent activity found for Epicor.",
+      "summary": "None mentioned",
       "validation_notes": "",
       "validation_status": "Unsupported"
     }

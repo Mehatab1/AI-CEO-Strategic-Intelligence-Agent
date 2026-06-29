@@ -143,13 +143,76 @@ with main_tab:
 
                 elif stage == "plan":
                     st.markdown("**1. Plan**")
-                    st.write("**Goal:**", payload.get("goal"))
-                    for step in payload.get("planned_steps", []):
-                        st.write("•", step)
+                    # Strip conversation history / memory prefix from the goal display —
+                    # goal_description embeds prior turns and memory context, but we only
+                    # want to show the actual question the agent is answering.
+                    raw_goal = payload.get("goal", "")
+                    if "Current question from the user:" in raw_goal:
+                        display_goal = raw_goal.split("Current question from the user:")[-1]
+                        display_goal = display_goal.split("\n\nRelevant prior")[0].strip()
+                    elif "\n\n" in raw_goal:
+                        display_goal = raw_goal.split("\n\n")[-1].strip()
+                    else:
+                        display_goal = raw_goal
+                    st.write("**Goal:**", display_goal[:300])
+
+                    steps = payload.get("planned_steps", [])
+                    # The model sometimes wraps the entire plan as a JSON tool-envelope
+                    # string instead of returning a clean list. Extract real steps first.
+                    import json as _j, re as _re
+                    real_steps = []
+                    for step in steps:
+                        if isinstance(step, str) and '"planned_steps"' in step:
+                            extracted = False
+                            # 1) Try strict JSON parse (the happy path)
+                            try:
+                                parsed = _j.loads(step)
+                                inner = (
+                                    parsed.get("parameters", {}).get("planned_steps")
+                                    or parsed.get("planned_steps")
+                                )
+                                if inner and isinstance(inner, list):
+                                    real_steps = [s for s in inner if isinstance(s, str)]
+                                    extracted = True
+                            except Exception:
+                                pass
+                            if not extracted:
+                                # 2) Regex fallback — model sometimes omits closing ] or }}
+                                #    Extract all quoted strings that appear after the
+                                #    "planned_steps" key; skip the key name itself.
+                                ps_idx = step.find('"planned_steps"')
+                                if ps_idx >= 0:
+                                    after = step[ps_idx + len('"planned_steps"'):]
+                                    candidates = _re.findall(
+                                        r'"((?:[^"\\]|\\.){15,})"', after
+                                    )
+                                    candidates = [c for c in candidates
+                                                  if c != "planned_steps"]
+                                    if candidates:
+                                        real_steps = candidates
+                                        extracted = True
+                            if extracted:
+                                break
+                        real_steps.append(step)
+                    for s in real_steps:
+                        st.write("•", s)
 
                 elif stage == "retrieve":
-                    st.markdown("**2. Retrieve** — autonomous tool selection")
+                    any_auto = any(
+                        call.get("auto_dispatched")
+                        for call in payload
+                        if isinstance(call, dict)
+                    )
+                    if any_auto:
+                        st.markdown(
+                            "**2. Retrieve** — *(LLM did not select tools; "
+                            "evidence dispatched directly from plan)*"
+                        )
+                    else:
+                        st.markdown("**2. Retrieve** — autonomous tool selection")
                     for call in payload:
+                        if not isinstance(call, dict):
+                            continue
                         tool = call.get("tool")
                         if tool == "finished_retrieving":
                             st.write("• ✅ *(agent signalled it had gathered enough evidence)*")
@@ -159,16 +222,28 @@ with main_tab:
                             arg_str = ", ".join(
                                 f"{k}={repr(v)}" for k, v in args.items() if v
                             )
-                            st.write(f"• {label}" + (f" → `{arg_str}`" if arg_str else ""))
+                            suffix = " *(auto-dispatched)*" if call.get("auto_dispatched") else ""
+                            st.write(f"• {label}" + (f" → `{arg_str}`" if arg_str else "") + suffix)
 
                 elif stage == "analyze":
                     st.markdown("**3. Analyze**")
                     for obs in payload.get("key_observations", []):
                         st.write("•", obs)
-                    if payload.get("candidate_items"):
-                        st.write("**Candidate items identified:**")
-                        for item in payload["candidate_items"]:
-                            st.write(f"  — {item}")
+                    raw_items = payload.get("candidate_items")
+                    if raw_items:
+                        # Guard against model returning a JSON string instead of a list —
+                        # iterating a bare string produces one character per bullet point.
+                        if isinstance(raw_items, str):
+                            try:
+                                import json as _json
+                                raw_items = _json.loads(raw_items)
+                            except Exception:
+                                raw_items = [raw_items]
+                        if isinstance(raw_items, list):
+                            st.write("**Candidate items identified:**")
+                            for item in raw_items:
+                                if isinstance(item, str) and len(item) > 1:
+                                    st.write(f"  — {item}")
 
                 elif stage == "decide_recommend":
                     st.markdown("**4. Decide & Recommend** *(draft)*")

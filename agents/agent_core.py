@@ -297,16 +297,25 @@ _FINISHED_RETRIEVING_SCHEMA = {
 
 
 def run_retrieval_stage(plan, tool_schemas, tool_handlers, persona_context="",
-                         max_iterations=MAX_RETRIEVAL_ITERATIONS_DEFAULT, verbose=True):
+                         max_iterations=MAX_RETRIEVAL_ITERATIONS_DEFAULT, verbose=True,
+                         initial_user_message=None):
     """
     STAGE 2 - RETRIEVE. The agent decides which of `tool_schemas` to call,
     with what arguments, and how many rounds it needs - then signals it's
     done by calling `finished_retrieving`. Returns a trace list of
     {"step", "tool", "arguments", "result"} dicts - this trace is the
     evidence base for the Analyze/Decide/Validate stages that follow.
+
+    initial_user_message: optional override for the opening user turn.
+    When callers can infer which tools are most relevant from the plan
+    (e.g. a competitor question → suggest run_competitor_intelligence),
+    passing a targeted hint here dramatically reduces first-step tool-call
+    failures on smaller local models.
     """
     full_schemas = list(tool_schemas) + [_FINISHED_RETRIEVING_SCHEMA]
     prefix = f"{persona_context.strip()}\n\n" if persona_context.strip() else ""
+
+    tool_names = [s.get("function", {}).get("name", "") for s in tool_schemas]
 
     messages = [
         {
@@ -315,23 +324,48 @@ def run_retrieval_stage(plan, tool_schemas, tool_handlers, persona_context="",
                 prefix
                 + "You are executing the Retrieve stage of an analysis pipeline.\n"
                 f"Your plan was:\n{json.dumps(plan, default=str)}\n\n"
-                "Call your retrieval tools as many times as you need to gather "
-                "real evidence relevant to the plan above - you decide the "
+                "You MUST call at least one retrieval tool. "
+                "Call your retrieval tools as many times as needed to gather "
+                "real evidence relevant to the plan above. You decide the "
                 "queries and how many calls are enough. When you have enough "
                 f"evidence, call `{FINISHED_RETRIEVING_TOOL_NAME}` to move on. "
-                "Do not draw conclusions yet - just gather evidence."
+                "Do not draw conclusions yet - just gather evidence.\n"
+                f"Available tools: {', '.join(tool_names)}."
             ),
         },
-        {"role": "user", "content": "Begin retrieving evidence now."},
+        {
+            "role": "user",
+            "content": initial_user_message or "Begin retrieving evidence now.",
+        },
     ]
 
     trace = []
+    nudged = False  # only nudge once per retrieval session
+
     for step in range(max_iterations):
         result = _call_ollama_chat(messages, full_schemas)
         message = result.get("message", {})
         tool_calls = message.get("tool_calls")
 
         if not tool_calls:
+            # If no tool was called at all yet, send one strong nudge before giving up.
+            if not trace and not nudged:
+                nudged = True
+                messages.append(message)
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "You have not called any retrieval tool yet, but this stage requires "
+                        "real evidence. You MUST call at least one tool before finishing. "
+                        "Look at your plan and call the most relevant tool right now. "
+                        f"Do not call `{FINISHED_RETRIEVING_TOOL_NAME}` until you have "
+                        "retrieved some evidence first."
+                    ),
+                })
+                if verbose:
+                    print(f"  [retrieve step {step + 1}] no tool call - sending nudge")
+                continue
+
             if verbose:
                 print(f"  [retrieve step {step + 1}] no tool call - treating retrieval as complete.")
             break
