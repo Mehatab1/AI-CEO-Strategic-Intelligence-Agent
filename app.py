@@ -379,7 +379,8 @@ with data_tab:
 
     last_update = clean_df["published"].max()
     last_update_str = last_update.strftime("%Y-%m-%d") if pd.notna(last_update) else "Unknown"
-    col5.metric("Last Update", last_update_str)
+    col5.metric("Latest Article", last_update_str)
+    col5.caption("Publish date of the most recent article in the knowledge base")
 
     st.divider()
 
