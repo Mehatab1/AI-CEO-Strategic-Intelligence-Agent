@@ -93,6 +93,7 @@ with main_tab:
         "plan": "📋 Planning...",
         "retrieve": "🔍 Retrieving evidence (autonomous tool selection)...",
         "analyze": "📊 Analyzing evidence...",
+        "reflect": "🔁 Reflecting — is the evidence enough?...",
         "decide": "✅ Deciding & recommending...",
         "critique": "🔬 Critic evaluating recommendation...",
         "validate": "🔎 Validating recommendation...",
@@ -244,6 +245,21 @@ with main_tab:
                             for item in raw_items:
                                 if isinstance(item, str) and len(item) > 1:
                                     st.write(f"  — {item}")
+
+                elif stage == "reflect":
+                    rnd = payload.get("round", 1)
+                    sufficient = payload.get("sufficient")
+                    icon = "✅" if sufficient else "🔁"
+                    verdict = "evidence sufficient" if sufficient else "needs more evidence"
+                    st.markdown(f"**3b. Reflect & Re-plan** (round {rnd}) — {icon} {verdict}")
+                    if payload.get("reason"):
+                        st.write(f"Reasoning: {payload['reason']}")
+                    followups = payload.get("followup_queries") or []
+                    if not sufficient and followups:
+                        st.write("Agent autonomously launched follow-up retrieval for:")
+                        for q in followups[:4]:
+                            if isinstance(q, str) and q.strip():
+                                st.write(f"  — {q}")
 
                 elif stage == "decide_recommend":
                     st.markdown("**4. Decide & Recommend** *(draft)*")
