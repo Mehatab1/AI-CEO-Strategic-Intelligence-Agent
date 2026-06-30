@@ -3,7 +3,13 @@
 # don't persist across container restarts (common on JupyterHub-style labs).
 set -e
 
-OLLAMA_MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
+# Fully-autonomous mode (LLM workflow routing, free tool choice over all 7 tools, and the
+# Stage 3b reflect/re-plan loop) needs a CAPABLE model. Small models (llama3.1:8b) are
+# unreliable at unconstrained tool-calling and will frequently call no tool.
+# Default to a strong open-source model; override with OLLAMA_MODEL if you have a bigger one.
+#   recommended: qwen2.5:14b (balanced) · stronger: qwen2.5:32b / llama3.1:70b
+#   minimal/legacy (not recommended for full autonomy): llama3.1:8b
+OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:14b}"
 
 echo "=== Checking Ollama install ==="
 if command -v ollama &> /dev/null; then

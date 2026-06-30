@@ -54,10 +54,26 @@ DATA_DIR = BASE_DIR / "notebook" / "data"
 MEMORY_DIR = BASE_DIR / "memory_store"
 MEMORY_DIR.mkdir(exist_ok=True)
 
+# Fully-autonomous mode is designed for a capable model. On cloud you can point this
+# at any strong open-source model, e.g.  OLLAMA_MODEL=qwen2.5:32b  (or 14b / llama3.1:70b).
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
-# More iterations to support 7-tool set; agent signals done via finished_retrieving
+# The agent sees all tools and signals done via finished_retrieving.
 MAX_RETRIEVAL_ITERATIONS = 8
+
+# How many autonomous reflect → re-retrieve → re-analyze rounds the agent may run
+# when it judges its own evidence insufficient. Bounded to avoid runaway cost.
+MAX_REFLECTION_LOOPS = int(os.getenv("MAX_REFLECTION_LOOPS", "2"))
+
+# First-turn instruction for the retrieve stage. No keyword pre-filtering: the agent
+# is shown every tool and decides entirely on its own which to call and how often.
+AUTONOMOUS_RETRIEVE_PROMPT = (
+    "You have full autonomy to gather evidence. Your available tools are: "
+    "retrieve_knowledge_base, fetch_live_news, run_opportunity_agent, run_risk_agent, "
+    "run_trend_agent, run_competitor_intelligence, and recall_memory. Based on your plan, "
+    "decide which tools to call and with what arguments, call as many as you need across "
+    "multiple rounds, and call finished_retrieving once you have gathered enough evidence."
+)
 
 # Injected into every pipeline stage so the agent never loses whose perspective it holds.
 # Without this, a question naming a competitor prominently can make the model drift into
@@ -597,222 +613,141 @@ def _extract_current_question(goal: str) -> str:
     return lines[-1] if lines else goal
 
 
-def _select_relevant_schemas(plan: dict) -> list:
-    """Return the 3-4 most relevant tool schemas for this plan.
+def _emergency_retrieve(plan: dict) -> list:
+    """Resilience only — NOT a routing shortcut.
 
-    llama3.1:8b exhibits decision paralysis when given 7 tool schemas at once —
-    it often produces no tool call at all. Pre-filtering to the most relevant
-    subset dramatically improves tool-call reliability on small local models.
-
-    Scans only the CURRENT question (not conversation history in plan.goal) so
-    competitor names from prior answers don't bleed into tool selection.
+    If the autonomous agent somehow calls no tool at all (a transient model
+    hiccup), pull plain knowledge-base context on the question so the pipeline
+    never runs on empty evidence. This deliberately does NOT route to specialist
+    agents by keyword — choosing agents is the agent's job, not ours.
     """
-    question = _extract_current_question(plan.get("goal", ""))
-    q_lower = question.lower()
-    steps_text = " ".join(plan.get("planned_steps", [])).lower()
-    combined = q_lower + " " + steps_text
-
-    # Build priority-ordered list of tool names to include
-    selected: list[str] = []
-
-    # Competitor names → competitor intelligence (highest priority)
-    if any(_competitor_in_text(c, combined) for c in KNOWN_COMPETITORS):
-        selected.append("run_competitor_intelligence")
-
-    # Domain specialist: check the QUESTION first (most reliable intent signal),
-    # then fall back to plan steps. This prevents misleading words like "potential"
-    # in plan steps from triggering the wrong agent when the question is about trends.
-    if any(w in q_lower for w in ("trend", "technology", "future", "emerging", "innovation", "ai", "cloud")):
-        selected.append("run_trend_agent")
-    elif any(w in q_lower for w in ("risk", "threat", "worry", "worried", "concern", "danger")):
-        selected.append("run_risk_agent")
-    elif any(w in q_lower for w in ("opportunity", "growth", "expansion")):
-        selected.append("run_opportunity_agent")
-    else:
-        # Fall back to scanning plan steps (lower precision, broader coverage)
-        if any(w in steps_text for w in ("opportunity", "growth", "expansion", "potential")):
-            selected.append("run_opportunity_agent")
-        elif any(w in steps_text for w in ("risk", "threat", "vulnerability", "danger")):
-            selected.append("run_risk_agent")
-        elif any(w in steps_text for w in ("trend", "technology", "emerging", "innovation")):
-            selected.append("run_trend_agent")
-
-    # Live data for temporal questions
-    if any(w in combined for w in ("latest", "today", "current", "recent", "live", "news", "now")):
-        selected.append("fetch_live_news")
-
-    # Always include knowledge base as a fallback
-    selected.append("retrieve_knowledge_base")
-
-    # Build schema list preserving selection order, capped at 4
-    schema_map = {s["function"]["name"]: s for s in RETRIEVAL_TOOL_SCHEMAS}
-    return [schema_map[name] for name in selected if name in schema_map][:4]
-
-
-def _fallback_tool_dispatch(plan: dict) -> list:
-    """Emergency fallback: directly call the right tools when the LLM produces no tool calls.
-
-    Called only when the retrieve stage returns zero evidence after both the targeted
-    initial hint and the in-loop nudge failed. This guarantees the pipeline always
-    has real evidence to work with, regardless of model tool-calling reliability.
-
-    Uses only the CURRENT question, not conversation history, to select tools.
-    """
-    question = _extract_current_question(plan.get("goal", ""))
-    combined = (
-        question + " " + " ".join(plan.get("planned_steps", []))
-    ).lower()
-
-    dispatched: list[dict] = []
-
-    # Competitor names → competitor intelligence calls (up to 2)
-    for comp in KNOWN_COMPETITORS:
-        if _competitor_in_text(comp, combined):
-            try:
-                result = tool_run_competitor_intelligence(comp)
-                dispatched.append({
-                    "step": "fallback",
-                    "tool": "run_competitor_intelligence",
-                    "arguments": {"competitor_name": comp},
-                    "result": result,
-                    "auto_dispatched": True,
-                })
-            except Exception:
-                pass
-            if len(dispatched) >= 2:
-                break
-
-    # Domain-specific agents — check the question directly (not combined) so that
-    # "potential" in plan steps doesn't shadow "trend" in the actual question.
-    question = _extract_current_question(plan.get("goal", ""))
-    q_lower = question.lower()
-
-    if any(w in q_lower for w in ("trend", "technology", "future", "emerging", "innovation", "ai", "cloud")):
-        try:
-            dispatched.append({
-                "step": "fallback", "tool": "run_trend_agent",
-                "arguments": {}, "result": tool_run_trend_agent(),
-                "auto_dispatched": True,
-            })
-        except Exception:
-            pass
-    elif any(w in q_lower for w in ("risk", "threat", "worry", "worried", "concern", "danger")) or \
-            any(w in combined for w in ("risk", "threat", "vulnerability")):
-        try:
-            dispatched.append({
-                "step": "fallback", "tool": "run_risk_agent",
-                "arguments": {}, "result": tool_run_risk_agent(),
-                "auto_dispatched": True,
-            })
-        except Exception:
-            pass
-    elif any(w in q_lower for w in ("opportunity", "growth", "expansion")) or \
-            (not dispatched and any(w in combined for w in ("opportunity", "growth"))):
-        try:
-            dispatched.append({
-                "step": "fallback", "tool": "run_opportunity_agent",
-                "arguments": {}, "result": tool_run_opportunity_agent(),
-                "auto_dispatched": True,
-            })
-        except Exception:
-            pass
-    elif not dispatched:
-        # True fallback when no signal matches — default to opportunity intelligence
-        try:
-            dispatched.append({
-                "step": "fallback", "tool": "run_opportunity_agent",
-                "arguments": {}, "result": tool_run_opportunity_agent(),
-                "auto_dispatched": True,
-            })
-        except Exception:
-            pass
-
-    # Always add a knowledge-base retrieval for background context
-    # Use the extracted question, not the full goal_description with history
-    query = (_extract_current_question(plan.get("goal", "")) or "SAP competitive strategy")[:120]
+    question = _extract_current_question(plan.get("goal", "")) or "SAP strategic intelligence"
     try:
-        dispatched.append({
-            "step": "fallback", "tool": "retrieve_knowledge_base",
-            "arguments": {"query": query},
-            "result": tool_retrieve_knowledge_base(query, k=5),
-            "auto_dispatched": True,
-        })
+        docs = tool_retrieve_knowledge_base(question, k=5)
+    except Exception:
+        docs = []
+    return [{
+        "step": "safety_net",
+        "tool": "retrieve_knowledge_base",
+        "arguments": {"query": question[:120]},
+        "result": docs,
+        "auto_dispatched": True,
+    }]
+
+
+# --- Autonomous workflow router (LLM-driven, replaces keyword routing) -------
+
+WORKFLOW_ROUTER_TOOL_NAME = "choose_approach"
+WORKFLOW_ROUTER_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": WORKFLOW_ROUTER_TOOL_NAME,
+        "description": "Decide how to approach answering the user's strategic question.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "workflow": {
+                    "type": "string",
+                    "enum": ["pipeline", "parallel", "review"],
+                    "description": (
+                        "review = a strategic decision, recommendation, competitor, or "
+                        "risk question that needs a critic to scrutinise the answer; "
+                        "parallel = a broad, multi-domain intelligence request; "
+                        "pipeline = a focused, factual lookup."
+                    ),
+                },
+                "reason": {"type": "string", "description": "One sentence justifying the choice."},
+            },
+            "required": ["workflow"],
+        },
+    },
+}
+
+
+def _route_workflow(question: str) -> str:
+    """LLM decides the analysis approach (pipeline / parallel / review).
+
+    Replaces the old keyword router — the model reasons about the question itself.
+    Falls back to 'review' (the most thorough path) only if the LLM call errors, so
+    a transient failure never silently downgrades scrutiny.
+    """
+    system = (
+        PERSONA_CONTEXT
+        + "\n\nYou are routing a strategic question to the right analysis approach. "
+        "Think about what the question needs, then call choose_approach exactly once."
+    )
+    try:
+        args, _ = core.run_single_tool_call(
+            system, f"Question: {question}",
+            WORKFLOW_ROUTER_SCHEMA, WORKFLOW_ROUTER_TOOL_NAME, verbose=False,
+        )
+        workflow = (args or {}).get("workflow", "").strip().lower()
+        if workflow in ("pipeline", "parallel", "review"):
+            return workflow
     except Exception:
         pass
+    return "review"
 
-    return dispatched
+
+# --- Autonomous reflection: is the gathered evidence sufficient? -------------
+
+EVIDENCE_ASSESS_TOOL_NAME = "assess_evidence"
+EVIDENCE_ASSESS_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": EVIDENCE_ASSESS_TOOL_NAME,
+        "description": "Judge whether the gathered evidence is enough to answer confidently.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sufficient": {
+                    "type": "boolean",
+                    "description": "True if the evidence is enough for a well-grounded recommendation.",
+                },
+                "followup_queries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "If not sufficient, 1-4 specific things to retrieve next. Empty if sufficient.",
+                },
+                "reason": {"type": "string", "description": "One sentence explaining the judgement."},
+            },
+            "required": ["sufficient"],
+        },
+    },
+}
 
 
-def _build_retrieval_hint(plan: dict) -> str:
-    """Build a targeted first-turn message for the retrieval stage.
+def _assess_evidence_sufficiency(question: str, evidence_text: str, analysis: dict):
+    """Agent reflects on whether it has gathered enough evidence.
 
-    Inspects the plan's goal + steps to identify which tools are most likely
-    needed, then produces an explicit starting instruction for the LLM.
-    This reduces first-step tool-call failures on smaller local models that
-    tend to fall back to free text when given only generic "begin retrieving" prompts.
-
-    Uses only the CURRENT question (not history) for signal detection.
+    Returns (sufficient: bool, followup_queries: list[str], reason: str).
+    On any error, returns sufficient=True so the loop never blocks the answer.
     """
-    question = _extract_current_question(plan.get("goal", ""))
-    combined = (
-        question + " " + " ".join(plan.get("planned_steps", []))
-    ).lower()
-
-    suggestions: list[str] = []
-
-    # Competitor names → competitor intelligence calls (most specific, list first)
-    for comp in KNOWN_COMPETITORS:
-        if _competitor_in_text(comp, combined):
-            suggestions.append(f"run_competitor_intelligence(competitor_name='{comp}')")
-
-    # Domain keywords → specialist agents
-    if any(w in combined for w in ("opportunity", "growth", "expansion", "market opportunity")):
-        suggestions.append("run_opportunity_agent()")
-    if any(w in combined for w in ("risk", "threat", "vulnerability", "danger", "worry", "concern")):
-        suggestions.append("run_risk_agent()")
-    if any(w in combined for w in ("trend", "technology", "emerging", "future", "innovation")):
-        suggestions.append("run_trend_agent()")
-    if any(w in combined for w in ("latest", "today", "current", "recent", "live", "breaking", "news", "announcement")):
-        suggestions.append("fetch_live_news(query='SAP latest news')")
-
-    # Always suggest a knowledge-base fallback for background context
-    if not suggestions or "competitor" not in combined:
-        suggestions.append("retrieve_knowledge_base(query='SAP strategic intelligence')")
-
-    # Build the instruction (cap at 3 to avoid overwhelming the model)
-    tool_list = "\n".join(f"  - {s}" for s in suggestions[:3])
-    return (
-        "Begin retrieving evidence now. Based on your plan, start with these tools:\n"
-        + tool_list
-        + "\nCall each tool, then call finished_retrieving when you have enough evidence."
+    system = (
+        PERSONA_CONTEXT
+        + "\n\nYou are critically deciding whether the evidence gathered is enough to "
+        "answer the question with a confident, well-grounded recommendation. If key "
+        "information is missing, mark it insufficient and propose specific follow-up "
+        "retrieval queries. Call assess_evidence exactly once."
     )
-
-
-def _detect_workflow(question: str) -> str:
-    """Select pipeline / review / parallel based on question semantics.
-
-    review   — strategic decisions, competitor analysis, risk assessment;
-               triggers the CriticAgent after the decide stage.
-    parallel — broad intelligence requests covering multiple domains.
-    pipeline — default; factual questions, specific topic lookups.
-    """
-    q = question.lower()
-    review_signals = (
-        "should", "recommend", "strategy", "strategically", "decision",
-        "risk", "threat", "versus", " vs ", "compare", "competitor",
-        "oracle", "microsoft", "workday", "salesforce", "servicenow",
-        "infor", "ifs", "epicor", "positioning", "beat", "win against",
+    user = (
+        f"Question: {question}\n\n"
+        f"Your analysis so far:\n{json.dumps(analysis, default=str)[:1500]}\n\n"
+        f"Evidence gathered:\n{evidence_text[:3000]}"
     )
-    if any(w in q for w in review_signals):
-        return "review"
-    parallel_signals = (
-        "overview", "comprehensive", "everything", "all about", "summary of",
-        "today", "latest", "current", "opportunity", "opportunities", "landscape",
-        "what is happening", "state of",
-    )
-    if any(w in q for w in parallel_signals):
-        return "parallel"
-    return "pipeline"
+    try:
+        args, _ = core.run_single_tool_call(
+            system, user, EVIDENCE_ASSESS_SCHEMA, EVIDENCE_ASSESS_TOOL_NAME, verbose=False,
+        )
+        if args:
+            return (
+                bool(args.get("sufficient", True)),
+                args.get("followup_queries") or [],
+                args.get("reason", ""),
+            )
+    except Exception:
+        pass
+    return True, [], ""
 
 
 def _format_answer(d: dict) -> str:
@@ -877,7 +812,8 @@ def ask_ceo(question, history=None, trace=None, on_stage=None):
     if history:
         history_text = "\n".join(f"{m['role']}: {m['content']}" for m in history[-6:])
 
-    workflow = _detect_workflow(question)
+    # Autonomous: the LLM itself decides the analysis approach (no keyword routing).
+    workflow = _route_workflow(question)
 
     def _log(stage: str, payload):
         if trace is not None:
@@ -920,43 +856,32 @@ def ask_ceo(question, history=None, trace=None, on_stage=None):
         )
         _log("plan", plan)
 
-        # ── STAGE 2: RETRIEVE ─────────────────────────────────────────────
-        # Pre-filter schemas to the 3-4 most relevant for this plan.
-        # Passing all 7 to llama3.1:8b causes decision paralysis — the model
-        # often produces zero tool calls when faced with too many options.
-        # _build_retrieval_hint() provides an explicit targeted first message.
-        # If the LLM still calls no tools after the in-loop nudge, we fall back
-        # to direct dispatch so the pipeline always has real evidence.
+        # ── STAGE 2: RETRIEVE (fully autonomous tool selection) ───────────
+        # The agent is given EVERY tool and decides entirely on its own which to
+        # call, with what arguments, over as many rounds as it needs. There is no
+        # keyword pre-filtering and no keyword fallback dispatch.
         _notify("retrieve")
-        relevant_schemas = _select_relevant_schemas(plan)
-        retrieval_hint = _build_retrieval_hint(plan)
         retrieval_trace = core.run_retrieval_stage(
             plan,
-            relevant_schemas,
+            RETRIEVAL_TOOL_SCHEMAS,
             RETRIEVAL_TOOL_HANDLERS,
             persona_context=PERSONA_CONTEXT,
             max_iterations=MAX_RETRIEVAL_ITERATIONS,
             verbose=False,
-            initial_user_message=retrieval_hint,
+            initial_user_message=AUTONOMOUS_RETRIEVE_PROMPT,
         )
 
-        # Safety net: if LLM called no tools even after hint + nudge, dispatch directly
+        # Resilience only (not a routing shortcut): if the agent called no tool at
+        # all, pull background KB context so the pipeline never runs on empty evidence.
         real_calls = [
             e for e in retrieval_trace
             if "result" in e and e.get("tool") != "finished_retrieving"
         ]
         if not real_calls:
-            retrieval_trace = _fallback_tool_dispatch(plan)
+            retrieval_trace = _emergency_retrieve(plan)
 
         _log("retrieve", retrieval_trace)
         evidence_text = core.build_evidence_text(retrieval_trace, max_chars=8000)
-
-        # Track which agents/tools were actually called (for the answer footer)
-        tools_called = [
-            e.get("tool") for e in retrieval_trace
-            if e.get("tool") and e.get("tool") != "finished_retrieving"
-        ]
-        unique_tools = list(dict.fromkeys(tools_called))  # preserve order, deduplicate
 
         # ── STAGE 3: ANALYZE ─────────────────────────────────────────────
         # LLM summarises key observations from evidence — no deciding yet.
@@ -969,6 +894,60 @@ def ask_ceo(question, history=None, trace=None, on_stage=None):
             verbose=False,
         )
         _log("analyze", analysis)
+
+        # ── STAGE 3b: REFLECT & RE-PLAN (autonomous evidence loop) ────────
+        # The agent judges whether its own evidence is sufficient. If not, it
+        # issues follow-up retrieval and re-analyzes — a genuine
+        # plan → act → observe → re-plan loop, bounded by MAX_REFLECTION_LOOPS.
+        current_question = _extract_current_question(goal_description)
+        for reflect_round in range(MAX_REFLECTION_LOOPS):
+            sufficient, followups, reason = _assess_evidence_sufficiency(
+                current_question, evidence_text, analysis
+            )
+            _log("reflect", {
+                "round": reflect_round + 1,
+                "sufficient": sufficient,
+                "followup_queries": followups,
+                "reason": reason,
+            })
+            if sufficient or not followups:
+                break
+
+            _notify("retrieve")
+            followup_msg = (
+                "Your evidence so far is insufficient. " + (reason or "") + " "
+                "Retrieve more now using these focus points, then call "
+                "finished_retrieving:\n" + "\n".join(f"- {q}" for q in followups[:4])
+            )
+            more = core.run_retrieval_stage(
+                plan, RETRIEVAL_TOOL_SCHEMAS, RETRIEVAL_TOOL_HANDLERS,
+                persona_context=PERSONA_CONTEXT,
+                max_iterations=MAX_RETRIEVAL_ITERATIONS, verbose=False,
+                initial_user_message=followup_msg,
+            )
+            more_real = [
+                e for e in more
+                if "result" in e and e.get("tool") != "finished_retrieving"
+            ]
+            if not more_real:
+                break
+            retrieval_trace = retrieval_trace + more
+            evidence_text = core.build_evidence_text(retrieval_trace, max_chars=9000)
+
+            _notify("analyze")
+            analysis = core.run_analyze_stage(
+                plan, evidence_text,
+                core.make_analyze_tool_schema("recommendations"),
+                persona_context=PERSONA_CONTEXT, verbose=False,
+            )
+            _log("analyze", analysis)
+
+        # Track which agents/tools were actually called across ALL retrieval rounds.
+        tools_called = [
+            e.get("tool") for e in retrieval_trace
+            if e.get("tool") and e.get("tool") != "finished_retrieving"
+        ]
+        unique_tools = list(dict.fromkeys(tools_called))  # preserve order, deduplicate
 
         # ── STAGE 4: DECIDE + RECOMMEND ───────────────────────────────────
         # LLM produces structured recommendation grounded in plan + evidence + analysis.

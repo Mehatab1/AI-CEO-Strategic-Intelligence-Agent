@@ -8,8 +8,9 @@ specialist agents over it (opportunities, risks, trends, competitor activity), t
 those outputs into a CEO agent that produces prioritized, evidence-backed recommendations —
 all displayed on an executive dashboard with a live agentic chat interface.
 
-Every reasoning step runs on a **local, open-source LLM via Ollama** (llama3.1:8b / phi4-mini
-by default). Zero Anthropic, OpenAI, or Gemini API calls anywhere in the pipeline.
+Every reasoning step runs on a **local, open-source LLM via Ollama** (`qwen2.5:14b` by default
+for fully-autonomous mode; any Ollama model via `OLLAMA_MODEL`). Zero Anthropic, OpenAI, or
+Gemini API calls anywhere in the pipeline.
 
 ---
 
@@ -18,18 +19,18 @@ by default). Zero Anthropic, OpenAI, or Gemini API calls anywhere in the pipelin
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ PRESENTATION LAYER — app.py (Streamlit)                              │
-│ Chat input · executive dashboard · live 7-stage reasoning trail      │
+│ Chat input · executive dashboard · live agent reasoning trail        │
 └──────────────────────────────────────────────────────────────────────┘
                                    ↓  ask_ceo(question)
 ┌──────────────────────────────────────────────────────────────────────┐
 │ ORCHESTRATION LAYER — ask_ceo() controller  (ceo_chat.py)            │
-│ _detect_workflow()  →  pipeline / parallel / review                  │
+│ LLM workflow router  →  pipeline / parallel / review                 │
 └──────────────────────────────────────────────────────────────────────┘
                                    ↓
 ┌──────────────────────────────────────────────────────────────────────┐
-│ AGENT PIPELINE  (core)  —  7 separately-logged LLM stages            │
-│ 0 Memory → 1 Plan → 2 Retrieve → 3 Analyze → 4 Decide                │
-│               → 4b Critic* → 5 Validate     (* review mode only)     │
+│ AGENT PIPELINE  (core)  —  autonomous, LLM-driven stages             │
+│ 0 Memory → 1 Plan → 2 Retrieve → 3 Analyze → 3b Reflect ↺            │
+│       → 4 Decide → 4b Critic* → 5 Validate   (* review only)         │
 └──────────────────────────────────────────────────────────────────────┘
                                    ↓  Stage 2 (Retrieve) invokes tools
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -55,7 +56,7 @@ by default). Zero Anthropic, OpenAI, or Gemini API calls anywhere in the pipelin
 ## Agentic Pipeline
 
 The system implements the **Goal → Plan → Retrieve → Analyze → Decide → Recommend → Validate**
-workflow required by the professor's clarification, as a **seven-stage** autonomous pipeline
+workflow required by the professor's clarification, as a **fully autonomous** pipeline
 driven by `ask_ceo()` in `ceo_chat.py`:
 
 ```
@@ -71,24 +72,31 @@ Stage 0 — Memory Recall (tool_recall_memory)
 Stage 1 — Plan (run_plan_stage)
 │  • LLM states goal + 3–5 concrete steps (only the submit_plan tool is
 │    offered — NO data access, enforcing "plan before execution")
-│  • _detect_workflow() selects the path: pipeline / parallel / review
+│  • _route_workflow(): the LLM itself picks pipeline / parallel / review
      │
      ▼
-Stage 2 — Retrieve (run_retrieval_stage) — autonomous tool selection
-│  • _select_relevant_schemas() pre-filters to the 3–4 most relevant tools
-│  • 7 tools available:
+Stage 2 — Retrieve (run_retrieval_stage) — FULLY autonomous tool selection
+│  • The agent is shown ALL 7 tools (no keyword pre-filter) and decides
+│    entirely on its own which to call and how often:
 │      retrieve_knowledge_base   (FAISS semantic search)
 │      fetch_live_news           (Hacker News + SAP News RSS)
 │      run_opportunity_agent     run_risk_agent     run_trend_agent
 │      run_competitor_intelligence  (live news + FAISS)
 │      recall_memory             (persistent agent memory)
 │  • LLM chooses how many rounds; signals done via finished_retrieving
-│  • _fallback_tool_dispatch() guarantees evidence if the model stalls
+│  • _emergency_retrieve() pulls KB context ONLY if the agent calls nothing
      │
      ▼
 Stage 3 — Analyze (run_analyze_stage)
 │  • Forced tool call: key_observations + candidate_items grounded
 │    ONLY in retrieved evidence — understand the evidence, no deciding yet
+     │
+     ▼
+Stage 3b — Reflect & Re-plan (autonomous evidence loop)
+│  • _assess_evidence_sufficiency(): the agent judges whether it has enough
+│    evidence; if not, it issues follow-up retrieval and re-analyzes
+│  • A genuine plan → act → observe → re-plan loop (bounded by
+│    MAX_REFLECTION_LOOPS) — this is what makes it fully autonomous
      │
      ▼
 Stage 4 — Decide + Recommend (run_decide_stage)
@@ -117,8 +125,9 @@ Final Answer + Reasoning Trail displayed in Streamlit
 
 Every stage is a **separate, logged LLM call** with a forced tool schema — the model cannot
 skip stages or merge them. Workflow routing, tool selection, and whether the Critic runs are
-all decided autonomously per question. The "Agent reasoning trail" expander in the chat UI
-shows all seven stages (0–5, including 4b) for every answer.
+all decided autonomously per question — including whether to loop back for more evidence.
+The "Agent reasoning trail" expander in the chat UI shows every stage (0–5, including the
+3b reflect loop and 4b critic) for each answer.
 
 ---
 
@@ -188,9 +197,10 @@ Hacker News API ─────────────────────�
 
 ### Chat pipeline (per question, live)
 0. **Memory Recall**: query persistent memory (semantic + episodic) *before* planning, so prior intelligence informs the plan
-1. **Plan**: LLM states goal + 3–5 concrete steps *before* touching any data; `_detect_workflow()` picks pipeline / parallel / review
-2. **Retrieve**: LLM autonomously selects from 7 tools (pre-filtered per plan) until it signals `finished_retrieving`; direct-dispatch fallback guarantees evidence
+1. **Plan**: LLM states goal + 3–5 concrete steps *before* touching any data; `_route_workflow()` — the LLM itself — picks pipeline / parallel / review
+2. **Retrieve**: LLM autonomously selects from **all 7 tools** (no keyword pre-filter) until it signals `finished_retrieving`; `_emergency_retrieve()` pulls KB context only if the agent calls nothing
 3. **Analyze**: LLM summarizes what the evidence *actually shows* (forced tool call, no deciding yet)
+3b. **Reflect & Re-plan**: `_assess_evidence_sufficiency()` — the agent judges its own evidence and autonomously re-retrieves + re-analyzes if it's insufficient (bounded by `MAX_REFLECTION_LOOPS`)
 4. **Decide + Recommend**: LLM produces structured recommendation grounded in plan + evidence + analysis
 4b. **[Review mode only] Critic**: CriticAgent evaluates evidence grounding, hallucination risk, consistency; rejection retries Decide
 5. **Validate**: second independent LLM call checks draft against evidence; marks Supported / Revised / Unsupported
@@ -254,9 +264,12 @@ no commercial API SDKs. The assignment constraint (no paid APIs) is enforced at 
 # 1. install Python dependencies
 pip install -r requirements.txt
 
-# 2. install Ollama and pull the model
+# 2. install Ollama and pull a capable model (fully-autonomous mode needs one).
+#    Easiest: run ./setup.sh  (installs Ollama, starts it, pulls $OLLAMA_MODEL).
+#    Or manually:
 curl https://ollama.ai/install.sh | sh
-ollama pull llama3.1:8b
+ollama pull qwen2.5:14b          # balanced · stronger: qwen2.5:32b / llama3.1:70b
+export OLLAMA_MODEL=qwen2.5:14b  # the app reads this; defaults can be overridden
 
 # 3. run the full data + agent pipeline
 jupyter nbconvert --to notebook --execute --inplace main.ipynb
@@ -264,6 +277,10 @@ jupyter nbconvert --to notebook --execute --inplace main.ipynb
 # 4. launch the dashboard
 streamlit run app.py
 ```
+
+> Full autonomy (LLM tool selection + the Stage 3b reflect loop) relies on a capable model.
+> `llama3.1:8b` still runs but is unreliable at unconstrained tool-calling — use it only as a
+> last resort (`export OLLAMA_MODEL=llama3.1:8b`).
 
 Or open `main.ipynb` and run cell by cell to inspect each stage's output.
 
