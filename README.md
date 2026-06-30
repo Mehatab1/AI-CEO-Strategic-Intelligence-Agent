@@ -8,8 +8,9 @@ specialist agents over it (opportunities, risks, trends, competitor activity), t
 those outputs into a CEO agent that produces prioritized, evidence-backed recommendations —
 all displayed on an executive dashboard with a live agentic chat interface.
 
-Every reasoning step runs on a **local, open-source LLM via Ollama** (llama3.1:8b / phi4-mini
-by default). Zero Anthropic, OpenAI, or Gemini API calls anywhere in the pipeline.
+Every reasoning step runs on a **local, open-source LLM via Ollama** (`qwen2.5:14b` by default
+for fully-autonomous mode; any Ollama model via `OLLAMA_MODEL`). Zero Anthropic, OpenAI, or
+Gemini API calls anywhere in the pipeline.
 
 ---
 
@@ -263,9 +264,12 @@ no commercial API SDKs. The assignment constraint (no paid APIs) is enforced at 
 # 1. install Python dependencies
 pip install -r requirements.txt
 
-# 2. install Ollama and pull the model
+# 2. install Ollama and pull a capable model (fully-autonomous mode needs one).
+#    Easiest: run ./setup.sh  (installs Ollama, starts it, pulls $OLLAMA_MODEL).
+#    Or manually:
 curl https://ollama.ai/install.sh | sh
-ollama pull llama3.1:8b
+ollama pull qwen2.5:14b          # balanced · stronger: qwen2.5:32b / llama3.1:70b
+export OLLAMA_MODEL=qwen2.5:14b  # the app reads this; defaults can be overridden
 
 # 3. run the full data + agent pipeline
 jupyter nbconvert --to notebook --execute --inplace main.ipynb
@@ -273,6 +277,10 @@ jupyter nbconvert --to notebook --execute --inplace main.ipynb
 # 4. launch the dashboard
 streamlit run app.py
 ```
+
+> Full autonomy (LLM tool selection + the Stage 3b reflect loop) relies on a capable model.
+> `llama3.1:8b` still runs but is unreliable at unconstrained tool-calling — use it only as a
+> last resort (`export OLLAMA_MODEL=llama3.1:8b`).
 
 Or open `main.ipynb` and run cell by cell to inspect each stage's output.
 
