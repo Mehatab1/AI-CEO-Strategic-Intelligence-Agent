@@ -89,6 +89,7 @@ with main_tab:
             st.rerun()
 
     STAGE_LABELS = {
+        "triage": "💬 Understanding your message...",
         "memory_recall": "🧠 Consulting memory...",
         "plan": "📋 Planning...",
         "retrieve": "🔍 Retrieving evidence (autonomous tool selection)...",
@@ -127,7 +128,14 @@ with main_tab:
                 stage = entry.get("stage")
                 payload = entry.get("payload") or {}
 
-                if stage == "memory_recall":
+                if stage == "triage":
+                    intent = payload.get("intent", "strategic")
+                    if intent == "meta":
+                        st.markdown("**Triage** — 💬 identity/greeting message; answered directly (pipeline skipped)")
+                    else:
+                        st.markdown("**Triage** — 📈 strategic question; running full pipeline")
+
+                elif stage == "memory_recall":
                     st.markdown("**0. Memory Recall**")
                     hits = payload if isinstance(payload, list) else []
                     if hits:

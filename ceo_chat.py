@@ -90,6 +90,23 @@ PERSONA_CONTEXT = (
     "earlier turns."
 )
 
+# Direct reply for identity / greeting / help messages — these skip the pipeline.
+AGENT_IDENTITY_ANSWER = (
+    "## Who I am\n"
+    "I'm **SAP's Strategic Intelligence Agent** — an autonomous AI that answers "
+    "strategic questions about SAP.\n\n"
+    "**How I work:** for each question I plan an approach, gather evidence "
+    "(a FAISS knowledge base of SAP news, live news, and specialist "
+    "opportunity / risk / trend / competitor agents), analyze it, draft a "
+    "recommendation, self-critique it, and validate it against the evidence "
+    "before answering.\n\n"
+    "**Try asking:**\n"
+    "- What are SAP's biggest risks right now?\n"
+    "- Where's SAP's biggest growth opportunity this quarter?\n"
+    "- What are SAP's competitors doing?\n"
+    "- What AI trends should SAP watch?"
+)
+
 # ---------------------------------------------------------------------------
 # Shared resources (lazy-loaded on first use)
 # ---------------------------------------------------------------------------
@@ -689,6 +706,59 @@ def _route_workflow(question: str) -> str:
     return "review"
 
 
+# --- Front-door triage: strategic question vs meta/identity/greeting ---------
+
+TRIAGE_TOOL_NAME = "classify_message"
+TRIAGE_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": TRIAGE_TOOL_NAME,
+        "description": "Classify the user's message before any analysis runs.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["strategic", "meta"],
+                    "description": (
+                        "'strategic' = a business/strategy question about SAP that needs "
+                        "analysis (risks, opportunities, competitors, trends, recommendations). "
+                        "'meta' = identity/greeting/help/thanks/smalltalk such as 'who are you', "
+                        "'hi', 'what can you do', 'help' — anything that does NOT require analysis."
+                    ),
+                },
+            },
+            "required": ["category"],
+        },
+    },
+}
+
+
+def _triage_question(question: str) -> str:
+    """Decide whether to run the analysis pipeline or give a direct reply.
+
+    Returns 'strategic' (run the pipeline) or 'meta' (identity/greeting/help).
+    Defaults to 'strategic' on any error so a real question is never skipped.
+    """
+    system = (
+        "You are the front door of an SAP strategic-intelligence agent. Decide whether "
+        "the user's message is a STRATEGIC business question to analyze about SAP, or a "
+        "META message (greeting, 'who are you', 'what can you do', help, thanks, smalltalk). "
+        "When unsure, choose 'strategic'. Call classify_message exactly once."
+    )
+    try:
+        args, _ = core.run_single_tool_call(
+            system, f"User message: {question}",
+            TRIAGE_SCHEMA, TRIAGE_TOOL_NAME, verbose=False,
+        )
+        category = (args or {}).get("category", "").strip().lower()
+        if category in ("strategic", "meta"):
+            return category
+    except Exception:
+        pass
+    return "strategic"
+
+
 # --- Autonomous reflection: is the gathered evidence sufficient? -------------
 
 EVIDENCE_ASSESS_TOOL_NAME = "assess_evidence"
@@ -812,9 +882,6 @@ def ask_ceo(question, history=None, trace=None, on_stage=None):
     if history:
         history_text = "\n".join(f"{m['role']}: {m['content']}" for m in history[-6:])
 
-    # Autonomous: the LLM itself decides the analysis approach (no keyword routing).
-    workflow = _route_workflow(question)
-
     def _log(stage: str, payload):
         if trace is not None:
             trace.append({"stage": stage, "payload": payload})
@@ -822,6 +889,16 @@ def ask_ceo(question, history=None, trace=None, on_stage=None):
     def _notify(stage: str):
         if on_stage is not None:
             on_stage(stage)
+
+    # ── TRIAGE: identity/greeting/help messages skip the analysis pipeline ──
+    _notify("triage")
+    intent = _triage_question(question)
+    _log("triage", {"intent": intent})
+    if intent == "meta":
+        return AGENT_IDENTITY_ANSWER
+
+    # Autonomous: the LLM itself decides the analysis approach (no keyword routing).
+    workflow = _route_workflow(question)
 
     try:
         # ── STAGE 0: MEMORY RECALL ────────────────────────────────────────
